@@ -8,6 +8,7 @@ const mongoose = require("mongoose");
 const app = express();
 
 app.use(express.json());
+app.use("/api/v1/auth", require("./src/routes/authRoutes.js"));
 
 const PORT = process.env.PORT;
 const MONGOURI = process.env.MONGO_URI;
