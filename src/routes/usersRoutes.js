@@ -55,4 +55,29 @@ router.get("/me", isAuth, async (req, res) => {
   }
 });
 
+//@route      GET /api/v1/users/:id/posts
+//@desc       Gets user posts
+//@access     Private
+router.get("/:id/posts", isAuth, async (req, res) => {
+  try {
+    // gets id from params
+    const { id } = req.params;
+    //id validity check
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).send({ msg: "ID Not Valid" });
+    }
+    //finds the user based on the id passed in the params
+    const user = await User.findById(id).select("-password");
+
+    //gets the hosting based on the ID's in the user with the id from params hosting array
+    const posts = await Post.find({
+      _id: { $in: user.posts },
+    }).populate("user", "username image");
+
+    res.send(posts);
+  } catch (error) {
+    return res.status(500).send({ msg: "Server Error" });
+  }
+});
+
 module.exports = router;
