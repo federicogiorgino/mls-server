@@ -52,3 +52,47 @@ router.post(
     }
   }
 );
+
+//@route      POST /api/v1/auth/login
+//@desc       Login existing user
+//@access     Public
+router.post(
+  "/login",
+  check("email", "Please provide a valid email").isEmail(),
+  check("password", "Password is required").exists(),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).send({ errors: errors.array() });
+    }
+
+    const { email, password } = req.body;
+
+    // finds the user stored in the database with the email coming from the body
+    const user = await User.findOne({ email });
+
+    //check if there is a user with the specified E-Mail address
+    if (!user) {
+      return res
+        .status(422)
+        .send({ errors: [{ msg: "Invalid email adress" }] });
+    }
+
+    // compares the passwords and if the one coming from the request body
+    // equals to the one stored in the db sends back a token
+    try {
+      //method implemented in the User model. Compares the input password with the DB stored password
+      await user.comparePassword(password);
+
+      // creates a JWT token associated to the user
+      const token = jwt.sign({ userId: user._id }, "JWTSUPERSECRET");
+
+      // sends back the JWT as a response to the request
+      res.send({ token });
+    } catch (err) {
+      return res.status(422).send({ msg: "Server Error" });
+    }
+  }
+);
+
+module.exports = router;
