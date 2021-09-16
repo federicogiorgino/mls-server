@@ -259,4 +259,48 @@ router.put("/:id/like", isAuth, async (req, res) => {
   }
 });
 
+//@route      PUT /api/v1/parties/:id/agree
+//@desc       Agrees to a post
+//@access     Private
+router.put("/:id/agree", isAuth, async (req, res) => {
+  try {
+    //postId
+    const { id } = req.params;
+
+    const { id: userId } = req.user;
+
+    //ID validity check
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).send({ msg: "ID not valid" });
+    }
+
+    const post = await Post.findById(id);
+
+    if (!post) {
+      return res.status(404).send({ msg: "Post Not Found" });
+    }
+
+    if (!post.approved && post.approvalPending) {
+      return res.status(404).send({ msg: "Can't agree non approved posts" });
+    }
+
+    if (
+      post.agrees.some(
+        //checks if there is a user who's agreed to the post already
+        (agreesId) => agreesId.toString() === userId
+      )
+    ) {
+      return res.status(404).send({ msg: "Post Already Agreed" });
+    } else {
+      post.agrees.unshift(userId);
+    }
+
+    await post.save();
+
+    res.send(post);
+  } catch (err) {
+    return res.status(500).send({ msg: "Server Error" });
+  }
+});
+
 module.exports = router;
