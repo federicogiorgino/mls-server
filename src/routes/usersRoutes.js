@@ -8,7 +8,20 @@ const Post = mongoose.model("Post");
 
 const router = express.Router();
 
-//@route      GET /api/v1/user/me
+//@route      GET /api/v1/users
+//@desc       Gets a list of all users
+//@access     Private
+router.get("/", isAuth, async (req, res) => {
+  try {
+    //gets all user in the DB removes password field from object
+    const allUsers = await User.find().select("-password");
+    res.send(allUsers);
+  } catch (err) {
+    return res.status(500).send({ msg: "Server Error" });
+  }
+});
+
+//@route      GET /api/v1/users/me
 //@desc       Gets the current user infos
 //@access     Private
 router.get("/me", isAuth, async (req, res) => {
