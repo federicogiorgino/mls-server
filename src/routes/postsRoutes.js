@@ -82,10 +82,10 @@ router.get("/:id", isAuth, async (req, res) => {
   }
 });
 
-//@route      PUT /api/v1/posts/approve/:id
+//@route      PUT /api/v1/posts/:id/approve
 //@desc       Approves an unmoderated post (if the one approving is not the owner)
 //@access     Private
-router.put("/approve/:id", isAuth, async (req, res) => {
+router.put("/:id/approve", isAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { id: userId } = req.user;
@@ -129,10 +129,10 @@ router.put("/approve/:id", isAuth, async (req, res) => {
   }
 });
 
-//@route      PUT /api/v1/posts/reject/:id
+//@route      PUT /api/v1/posts/:id/reject/
 //@desc       Rejects an unmoderated post
 //@access     Private
-router.put("/reject/:id", isAuth, async (req, res) => {
+router.put("/:id/reject", isAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { id: userId } = req.user;
@@ -157,6 +157,39 @@ router.put("/reject/:id", isAuth, async (req, res) => {
     await post.remove();
 
     res.send({ msg: "Post rejected successfully" });
+  } catch (err) {
+    return res.status(500).send({ msg: "Server Error" });
+  }
+});
+
+//@route      DELETE /api/v1/posts/:id
+//@desc       Deletes a post based on id if req.user === party.user
+//@access     Private
+router.delete("/:id", isAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { id: userId } = req.user;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).send({ msg: "ID Not Valid" });
+    }
+
+    const post = await Post.findById(id);
+
+    if (!post) {
+      return res.status(404).send({ msg: "Post Not Found" });
+    }
+
+    if (post.user.toString() !== userId) {
+      return res.status(401).send({ msg: "User unauthorized" });
+    }
+
+    //we update all user (regardless of checking if they have had the post in their attending)
+    //and remove the post id from the attending array
+    await User.updateMany({}, { $pull: { likes: id } }, { new: true });
+
+    await post.remove();
+    res.send({ msg: "Post deleted successfully" });
   } catch (err) {
     return res.status(500).send({ msg: "Server Error" });
   }
