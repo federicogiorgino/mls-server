@@ -303,4 +303,50 @@ router.put("/:id/agree", isAuth, async (req, res) => {
   }
 });
 
+//@route      PUT /api/v1/parties/:id/deserve
+//@desc       Put a deservo to a post
+//@access     Private
+router.put("/:id/deserve", isAuth, async (req, res) => {
+  try {
+    //postId
+    const { id } = req.params;
+
+    const { id: userId } = req.user;
+
+    //ID validity check
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).send({ msg: "ID not valid" });
+    }
+
+    const post = await Post.findById(id);
+
+    if (!post) {
+      return res.status(404).send({ msg: "Post Not Found" });
+    }
+
+    if (!post.approved && post.approvalPending) {
+      return res
+        .status(404)
+        .send({ msg: "Can't put a deserve on non approved posts" });
+    }
+
+    if (
+      post.deserves.some(
+        //checks if there is a user who's put a deserve to the post already
+        (deserveId) => deserveId.toString() === userId
+      )
+    ) {
+      return res.status(404).send({ msg: "Post Already Deserved" });
+    } else {
+      post.deserves.unshift(userId);
+    }
+
+    await post.save();
+
+    res.send(post);
+  } catch (err) {
+    return res.status(500).send({ msg: "Server Error" });
+  }
+});
+
 module.exports = router;
