@@ -46,4 +46,23 @@ userSchema.pre("save", function (next) {
   });
 });
 
+//method that compares the password stored in the DB with the input password while logging in
+userSchema.methods.comparePassword = function (canditatePassword) {
+  const user = this;
+
+  return new Promise((resolve, reject) => {
+    bcrypt.compare(canditatePassword, user.password, (err, isMatch) => {
+      if (err) {
+        return reject(err);
+      }
+
+      if (!isMatch) {
+        return reject(false);
+      }
+
+      resolve(true);
+    });
+  });
+};
+
 mongoose.model("User", userSchema);
