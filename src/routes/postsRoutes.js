@@ -45,7 +45,7 @@ router.post(
 
       const post = await newPost.save();
 
-      // //finds the user in the db and pushes the party.id into the created party array
+      // //finds the user in the db and pushes the post.id into the created post array
       // await User.findByIdAndUpdate(
       //   id,
       //   { $push: { posts: post.id } },
@@ -77,6 +77,39 @@ router.get("/:id", isAuth, async (req, res) => {
     }
 
     res.send(post);
+  } catch (err) {
+    return res.status(500).send({ msg: "Server Error" });
+  }
+});
+
+//@route      DELETE /api/v1/posts/:id
+//@desc       Deletes a post based on id if req.user === post.user
+//@access     Private
+router.delete("/:id", isAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { id: userId } = req.user;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).send({ msg: "ID Not Valid" });
+    }
+
+    const post = await Post.findById(id);
+
+    if (!post) {
+      return res.status(404).send({ msg: "Post Not Found" });
+    }
+
+    if (post.user.toString() !== userId) {
+      return res.status(401).send({ msg: "User unauthorized" });
+    }
+
+    //we update all user (regardless of checking if they have had the post in their attending)
+    //and remove the post id from the attending array
+    await User.updateMany({}, { $pull: { likes: id } }, { new: true });
+
+    await post.remove();
+    res.send({ msg: "Post deleted successfully" });
   } catch (err) {
     return res.status(500).send({ msg: "Server Error" });
   }
@@ -162,16 +195,19 @@ router.put("/:id/reject", isAuth, async (req, res) => {
   }
 });
 
-//@route      DELETE /api/v1/posts/:id
-//@desc       Deletes a post based on id if req.user === party.user
+//@route      PUT /api/v1/parties/:id/like
+//@desc       Likes/Unlikes a post
 //@access     Private
-router.delete("/:id", isAuth, async (req, res) => {
+router.put("/:id/like", isAuth, async (req, res) => {
   try {
+    //postId
     const { id } = req.params;
+
     const { id: userId } = req.user;
 
+    //ID validity check
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).send({ msg: "ID Not Valid" });
+      return res.status(400).send({ msg: "ID not valid" });
     }
 
     const post = await Post.findById(id);
@@ -180,16 +216,44 @@ router.delete("/:id", isAuth, async (req, res) => {
       return res.status(404).send({ msg: "Post Not Found" });
     }
 
-    if (post.user.toString() !== userId) {
-      return res.status(401).send({ msg: "User unauthorized" });
+    if (!post.approved && post.approvalPending) {
+      return res.status(404).send({ msg: "Can't like non approved posts" });
     }
 
-    //we update all user (regardless of checking if they have had the post in their attending)
-    //and remove the post id from the attending array
-    await User.updateMany({}, { $pull: { likes: id } }, { new: true });
+    if (
+      post.likes.some(
+        //checks if there is a user who's liked the post already
+        (likesId) => likesId.toString() === userId
+      )
+    ) {
+      post.likes = post.likes.filter(
+        //filters the attending array keeping the user.id who are not the user sendig the req
+        (likesId) => likesId.toString() !== userId
+      );
 
-    await post.remove();
-    res.send({ msg: "Post deleted successfully" });
+      //finds the user based on the req.user.id and pulls the post id from attending array
+      await User.findByIdAndUpdate(
+        userId,
+        {
+          $pull: { likes: id },
+        },
+        { new: true }
+      );
+    } else {
+      post.likes.unshift(userId);
+      //finds the user based on the req.user.id and pushes the post id from attending array
+      await User.findByIdAndUpdate(
+        userId,
+        {
+          $push: { likes: id },
+        },
+        { new: true }
+      );
+    }
+
+    await post.save();
+
+    res.send(post);
   } catch (err) {
     return res.status(500).send({ msg: "Server Error" });
   }
