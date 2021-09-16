@@ -22,6 +22,24 @@ router.get("/", isAuth, async (req, res) => {
   }
 });
 
+//@route      GET /api/v1/posts/unapproved
+//@desc       Gets all unaprroved posts
+//@access     Private
+router.get("/unapproved", isAuth, async (req, res) => {
+  try {
+    const allUnapprovedPosts = await Post.find({
+      approved: false,
+      approvalPending: true,
+    })
+      .populate("user", "username image")
+      .sort({ createdAt: -1 });
+
+    res.send(allUnapprovedPosts);
+  } catch (err) {
+    return res.status(500).send({ msg: "Server Error" });
+  }
+});
+
 //@route      POST /api/v1/posts
 //@desc       Creates a post
 //@access     Private
@@ -402,4 +420,5 @@ router.put(
     }
   }
 );
+
 module.exports = router;
