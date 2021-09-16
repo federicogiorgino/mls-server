@@ -9,6 +9,7 @@ const app = express();
 
 app.use(express.json());
 app.use("/api/v1/auth", require("./src/routes/authRoutes.js"));
+app.use("/api/v1/posts", require("./src/routes/postsRoutes.js"));
 
 const PORT = process.env.PORT;
 const MONGOURI = process.env.MONGO_URI;
