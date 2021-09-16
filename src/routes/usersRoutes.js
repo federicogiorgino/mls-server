@@ -21,6 +21,26 @@ router.get("/", isAuth, async (req, res) => {
   }
 });
 
+//@route      GET /api/v1/users/:id
+//@desc       Gets user by id
+//@access     Private
+router.get("/:id", isAuth, async (req, res) => {
+  try {
+    // gets id from params
+    const { id } = req.params;
+    //id validity check
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).send({ msg: "ID Not Valid" });
+    }
+    //finds the user based on the id passed in the params
+    const user = await User.findById(id).select("-password");
+
+    res.send(user);
+  } catch (err) {
+    return res.status(500).send({ msg: "Server Error" });
+  }
+});
+
 //@route      GET /api/v1/users/me
 //@desc       Gets the current user infos
 //@access     Private
