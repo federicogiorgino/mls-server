@@ -23,6 +23,8 @@ const postSchema = new Schema({
       createdAt: { type: Date, default: Date.now },
     },
   ],
+  approved: { type: Boolean, default: false },
+  approvalPending: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now },
 });
 
