@@ -13,7 +13,7 @@ const router = express.Router();
 router.get("/", isAuth, async (req, res) => {
   try {
     const allPosts = await Post.find({ approved: true, approvalPending: false })
-      .populate("user", "name image")
+      .populate("user", "username image")
       .sort({ createdAt: -1 });
 
     res.send(allPosts);
@@ -88,6 +88,7 @@ router.get("/:id", isAuth, async (req, res) => {
 router.put("/approve/:id", isAuth, async (req, res) => {
   try {
     const { id } = req.params;
+    const { id: userId } = req.user;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).send({ msg: "ID Not Valid" });
@@ -99,7 +100,7 @@ router.put("/approve/:id", isAuth, async (req, res) => {
       return res.status(404).send({ msg: "Post not found" });
     }
 
-    if (req.user.id === post.user.toString()) {
+    if (post.user.toString() === userId) {
       return res.status(404).send({ msg: "You cannot approve your own posts" });
     }
 
@@ -123,6 +124,39 @@ router.put("/approve/:id", isAuth, async (req, res) => {
     );
 
     res.send({ msg: "Post approved successfully" });
+  } catch (err) {
+    return res.status(500).send({ msg: "Server Error" });
+  }
+});
+
+//@route      PUT /api/v1/posts/reject/:id
+//@desc       Rejects an unmoderated post
+//@access     Private
+router.put("/reject/:id", isAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { id: userId } = req.user;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).send({ msg: "ID Not Valid" });
+    }
+
+    const post = await Post.findById(id);
+
+    if (!post) {
+      return res.status(404).send({ msg: "Post not found" });
+    }
+
+    if (post.user.toString() === userId) {
+      return res.status(404).send({ msg: "You cannot reject your own posts" });
+    }
+
+    if (post.approved || !post.approvalPending) {
+      return res.status(404).send({ msg: "Post already rejected" });
+    }
+
+    await post.remove();
+
+    res.send({ msg: "Post rejected successfully" });
   } catch (err) {
     return res.status(500).send({ msg: "Server Error" });
   }
