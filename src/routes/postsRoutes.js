@@ -116,7 +116,7 @@ router.delete("/:id", isAuth, async (req, res) => {
 });
 
 //@route      PUT /api/v1/posts/:id/approve
-//@desc       Approves an unmoderated post (if the one approving is not the owner)
+//@desc       Approves an unmoderated post
 //@access     Private
 router.put("/:id/approve", isAuth, async (req, res) => {
   try {
@@ -349,4 +349,57 @@ router.put("/:id/deserve", isAuth, async (req, res) => {
   }
 });
 
+//@route      PUT /api/v1/parties/:id/comment
+//@desc       Comments a party
+//@access     Private
+router.put(
+  "/:id/comment",
+  isAuth,
+  check("text", "Text is required").notEmpty(),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).send({ errors: errors.array() });
+    }
+
+    try {
+      const { id } = req.params;
+
+      const { id: userId } = req.user;
+
+      //ID validity check
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).send({ msg: "ID not valid" });
+      }
+
+      const user = await User.findById(userId);
+      const post = await Post.findById(id);
+
+      if (!post) {
+        return res.status(404).send({ msg: "Post Not Found" });
+      }
+
+      if (!post.approved && post.approvalPending) {
+        return res
+          .status(404)
+          .send({ msg: "Can't comment on non approved posts" });
+      }
+
+      const newComment = {
+        user: userId,
+        text: req.body.text,
+        username: user.username,
+        image: user.image,
+      };
+
+      post.comments.unshift(newComment);
+
+      await post.save();
+
+      res.send(post);
+    } catch (error) {
+      return res.status(500).send({ msg: "Server Error" });
+    }
+  }
+);
 module.exports = router;
