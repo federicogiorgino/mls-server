@@ -15,7 +15,7 @@ const userSchema = new Schema({
   bio: { type: String },
   location: { type: String },
   posts: [{ type: Schema.Types.ObjectId, ref: "Post" }],
-  bookmarks: [{ type: Schema.Types.ObjectId, ref: "Post" }],
+  likes: [{ type: Schema.Types.ObjectId, ref: "Post" }],
   followers: [{ type: Schema.Types.ObjectId, ref: "User" }],
   following: [{ type: Schema.Types.ObjectId, ref: "User" }],
   visitors: [{ type: Schema.Types.ObjectId, ref: "User" }],
