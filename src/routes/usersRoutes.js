@@ -81,7 +81,7 @@ router.get("/:id/posts", isAuth, async (req, res) => {
 });
 
 //@route      GET /api/v1/users/:id/following
-//@desc       Gets current user following
+//@desc       Gets user following
 //@access     Private
 router.get("/:id/following", isAuth, async (req, res) => {
   try {
@@ -97,9 +97,34 @@ router.get("/:id/following", isAuth, async (req, res) => {
     //gets the following based on the ID's in the user with the id from params following array
     const following = await User.find({
       _id: { $in: user.following },
-    }).select("name username image");
+    }).select("username image");
 
     res.send(following);
+  } catch (error) {
+    return res.status(500).send("Server Error");
+  }
+});
+
+//@route      GET /api/v1/users/followers
+//@desc       Gets user followers
+//@access     Private
+router.get("/:id/followers", isAuth, async (req, res) => {
+  try {
+    // gets id from params
+    const { id } = req.params;
+    //id validity check
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).send({ msg: "ID Not Valid" });
+    }
+    //finds the user based on the id passed in the params
+    const user = await User.findById(id).select("-password");
+
+    //gets the followers based on the ID's in the user with the id from params followers array
+    const followers = await User.find({
+      _id: { $in: user.followers },
+    }).select("username image");
+
+    res.send(followers);
   } catch (error) {
     return res.status(500).send("Server Error");
   }
