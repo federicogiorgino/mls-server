@@ -52,7 +52,7 @@ router.put("/posts/:id/approve", [isAuth, isAdmin], async (req, res) => {
       {
         approved: true,
         approvalPending: false,
-        createdAt: Date.now,
+        createdAt: Date.now(),
       },
       { new: true }
     );
@@ -72,7 +72,7 @@ router.put("/posts/:id/approve", [isAuth, isAdmin], async (req, res) => {
 //@route      PUT /api/v1/admin/posts/:id/reject
 //@desc       Rejects a pending post
 //@access     Private
-router.put("/posts/:id/reject", isAuth, async (req, res) => {
+router.put("/posts/:id/reject", [isAuth, isAdmin], async (req, res) => {
   try {
     const { id } = req.params;
     //ID validity check
