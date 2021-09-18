@@ -12,6 +12,7 @@ const userSchema = new Schema({
     default:
       "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png",
   },
+  admin: { type: Boolean, default: false },
   bio: { type: String },
   location: { type: String },
   posts: [{ type: Schema.Types.ObjectId, ref: "Post" }],

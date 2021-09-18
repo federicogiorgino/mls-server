@@ -25,25 +25,6 @@ router.get("/", isAuth, async (req, res) => {
   }
 });
 
-//@route      GET /api/v1/posts/unapproved
-//@desc       Gets all unaprroved posts
-//@access     Private
-router.get("/unapproved", isAuth, async (req, res) => {
-  try {
-    const allUnapprovedPosts = await Post.find({
-      approved: false,
-      approvalPending: true,
-      user: { $ne: req.user.id },
-    })
-      .populate("user", "username image")
-      .sort({ createdAt: -1 });
-
-    res.send(allUnapprovedPosts);
-  } catch (err) {
-    return res.status(500).send({ msg: "Server Error" });
-  }
-});
-
 //@route      POST /api/v1/posts
 //@desc       Creates a post
 //@access     Private
@@ -92,7 +73,7 @@ router.get("/:id", isAuth, async (req, res) => {
       return res.status(400).send({ msg: "ID Not Valid" });
     }
 
-    const post = await Post.findById(id).populate("user", "name image");
+    const post = await Post.findById(id).populate("user", "username image");
 
     if (!post) {
       return res.status(404).send({ msg: "Post not found" });
@@ -354,7 +335,7 @@ router.put("/:id/unlike", isAuth, async (req, res) => {
     }
 
     post.likes = post.likes.filter(
-      //filters the attending array keeping the user.id who are not the user sendig the req
+      //filters the liikes array keeping the user.id who are not the user sending the req
       (likesId) => likesId.toString() !== userId
     );
 
@@ -463,7 +444,7 @@ router.put("/:id/deserve", isAuth, async (req, res) => {
 });
 
 //@route      PUT /api/v1/posts/:id/comment
-//@desc       Comments a party
+//@desc       Comments a post
 //@access     Private
 router.put(
   "/:id/comment",
@@ -477,7 +458,6 @@ router.put(
 
     try {
       const { id } = req.params;
-
       const { id: userId } = req.user;
 
       //ID validity check
@@ -509,7 +489,7 @@ router.put(
 
       await post.save();
 
-      res.send(post);
+      res.send(post.comments);
     } catch (error) {
       return res.status(500).send({ msg: "Server Error" });
     }
