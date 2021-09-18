@@ -130,4 +130,60 @@ router.get("/:id/followers", isAuth, async (req, res) => {
   }
 });
 
+//@route      PUT /api/users/:id/follow
+//@desc       Follows a user/Unfollows a user
+//@access     Private
+router.put("/:id/follow", isAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { id: userId } = req.user;
+    //ID validity check
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).send({ msg: "ID not valid" });
+    }
+
+    if (req.user.id === id) {
+      return res.status(400).send({ msg: "You cannot follow yourself" });
+    }
+    //search for the user based on the params id
+    const userToFollow = await User.findById(id);
+    const userFollowing = await User.findById(userId);
+
+    //error if user not found
+    if (!userToFollow || !userFollowing) {
+      return res.status(404).send({ msg: "User Not Found" });
+    }
+
+    if (
+      userToFollow.followers.some((user) => user.toString() === userId) &&
+      userFollowing.following.some(
+        (user) => user.toString() === userToFollow.id
+      )
+    ) {
+      userToFollow.followers = userToFollow.followers.filter(
+        (user) => user.toString() !== userId
+      );
+
+      userFollowing.following = userFollowing.following.filter(
+        (user) => user.toString() !== userToFollow.id
+      );
+
+      await userToFollow.save();
+      await userFollowing.save();
+
+      res.send("User unfollowed successfully");
+    } else {
+      userToFollow.followers.unshift(userId);
+      userFollowing.following.unshift(userToFollow);
+
+      await userToFollow.save();
+      await userFollowing.save();
+
+      res.send("User followed successfully");
+    }
+  } catch (error) {
+    return res.status(500).send("Server Error");
+  }
+});
+
 module.exports = router;

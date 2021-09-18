@@ -12,7 +12,10 @@ const router = express.Router();
 //@access     Private
 router.get("/", isAuth, async (req, res) => {
   try {
-    const allPosts = await Post.find({ approved: true, approvalPending: false })
+    const allPosts = await Post.find({
+      approved: true,
+      approvalPending: false,
+    })
       .populate("user", "username image")
       .sort({ createdAt: -1 });
 
@@ -30,6 +33,7 @@ router.get("/unapproved", isAuth, async (req, res) => {
     const allUnapprovedPosts = await Post.find({
       approved: false,
       approvalPending: true,
+      user: { $ne: req.user.id },
     })
       .populate("user", "username image")
       .sort({ createdAt: -1 });
@@ -213,7 +217,7 @@ router.put("/:id/reject", isAuth, async (req, res) => {
   }
 });
 
-//@route      PUT /api/v1/parties/:id/like
+//@route      PUT /api/v1/posts/:id/like
 //@desc       Likes/Unlikes a post
 //@access     Private
 router.put("/:id/like", isAuth, async (req, res) => {
@@ -238,46 +242,137 @@ router.put("/:id/like", isAuth, async (req, res) => {
       return res.status(404).send({ msg: "Can't like non approved posts" });
     }
 
-    if (
-      post.likes.some(
-        //checks if there is a user who's liked the post already
-        (likesId) => likesId.toString() === userId
-      )
-    ) {
-      post.likes = post.likes.filter(
-        //filters the attending array keeping the user.id who are not the user sendig the req
-        (likesId) => likesId.toString() !== userId
-      );
+    // if (
+    //   post.likes.some(
+    //     //checks if there is a user who's liked the post already
+    //     (likesId) => likesId.toString() === userId
+    //   )
+    // ) {
+    //   post.likes = post.likes.filter(
+    //     //filters the attending array keeping the user.id who are not the user sendig the req
+    //     (likesId) => likesId.toString() !== userId
+    //   );
 
-      //finds the user based on the req.user.id and pulls the post id from attending array
-      await User.findByIdAndUpdate(
-        userId,
-        {
-          $pull: { likes: id },
-        },
-        { new: true }
-      );
-    } else {
-      post.likes.unshift(userId);
-      //finds the user based on the req.user.id and pushes the post id from attending array
-      await User.findByIdAndUpdate(
-        userId,
-        {
-          $push: { likes: id },
-        },
-        { new: true }
-      );
+    //   //finds the user based on the req.user.id and pulls the post id from attending array
+    //   await User.findByIdAndUpdate(
+    //     userId,
+    //     {
+    //       $pull: { likes: id },
+    //     },
+    //     { new: true }
+    //   );
+    // } else {
+    //   post.likes.unshift(userId);
+    //   //finds the user based on the req.user.id and pushes the post id from attending array
+    //   await User.findByIdAndUpdate(
+    //     userId,
+    //     {
+    //       $push: { likes: id },
+    //     },
+    //     { new: true }
+    //   );
+    // }
+
+    if (post.likes.some((likesId) => likesId.toString() === userId)) {
+      return res.status(400).send({ msg: "Post already liked" });
     }
+
+    post.likes.unshift(userId);
+
+    await User.findByIdAndUpdate(
+      userId,
+      { $push: { likes: id } },
+      { new: true }
+    );
 
     await post.save();
 
-    res.send(post);
+    res.send(post.likes);
   } catch (err) {
     return res.status(500).send({ msg: "Server Error" });
   }
 });
 
-//@route      PUT /api/v1/parties/:id/agree
+//@route      PUT /api/v1/posts/:id/unlike
+//@desc       Likes/Unlikes a post
+//@access     Private
+router.put("/:id/unlike", isAuth, async (req, res) => {
+  try {
+    //postId
+    const { id } = req.params;
+
+    const { id: userId } = req.user;
+
+    //ID validity check
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).send({ msg: "ID not valid" });
+    }
+
+    const post = await Post.findById(id);
+
+    if (!post) {
+      return res.status(404).send({ msg: "Post Not Found" });
+    }
+
+    if (!post.approved && post.approvalPending) {
+      return res.status(404).send({ msg: "Can't like non approved posts" });
+    }
+
+    // if (
+    //   post.likes.some(
+    //     //checks if there is a user who's liked the post already
+    //     (likesId) => likesId.toString() === userId
+    //   )
+    // ) {
+    //   post.likes = post.likes.filter(
+    //     //filters the attending array keeping the user.id who are not the user sendig the req
+    //     (likesId) => likesId.toString() !== userId
+    //   );
+
+    //   //finds the user based on the req.user.id and pulls the post id from attending array
+    //   await User.findByIdAndUpdate(
+    //     userId,
+    //     {
+    //       $pull: { likes: id },
+    //     },
+    //     { new: true }
+    //   );
+    // } else {
+    //   post.likes.unshift(userId);
+    //   //finds the user based on the req.user.id and pushes the post id from attending array
+    //   await User.findByIdAndUpdate(
+    //     userId,
+    //     {
+    //       $push: { likes: id },
+    //     },
+    //     { new: true }
+    //   );
+    // }
+
+    if (!post.likes.some((likesId) => likesId.toString() === userId)) {
+      return res.status(400).send({ msg: "Post already liked" });
+    }
+
+    post.likes = post.likes.filter(
+      //filters the attending array keeping the user.id who are not the user sendig the req
+      (likesId) => likesId.toString() !== userId
+    );
+
+    await User.findByIdAndUpdate(
+      userId,
+      { $pull: { likes: id } },
+      { new: true }
+    );
+
+    await post.save();
+
+    res.send(post.likes);
+  } catch (err) {
+    return res.status(500).send({ msg: "Server Error" });
+  }
+});
+
+//@route      PUT /api/v1/posts/:id/agree
 //@desc       Agrees to a post
 //@access     Private
 router.put("/:id/agree", isAuth, async (req, res) => {
@@ -315,13 +410,13 @@ router.put("/:id/agree", isAuth, async (req, res) => {
 
     await post.save();
 
-    res.send(post);
+    res.send(post.agrees);
   } catch (err) {
     return res.status(500).send({ msg: "Server Error" });
   }
 });
 
-//@route      PUT /api/v1/parties/:id/deserve
+//@route      PUT /api/v1/posts/:id/deserve
 //@desc       Put a deservo to a post
 //@access     Private
 router.put("/:id/deserve", isAuth, async (req, res) => {
@@ -361,13 +456,13 @@ router.put("/:id/deserve", isAuth, async (req, res) => {
 
     await post.save();
 
-    res.send(post);
+    res.send(post.deserves);
   } catch (err) {
     return res.status(500).send({ msg: "Server Error" });
   }
 });
 
-//@route      PUT /api/v1/parties/:id/comment
+//@route      PUT /api/v1/posts/:id/comment
 //@desc       Comments a party
 //@access     Private
 router.put(
